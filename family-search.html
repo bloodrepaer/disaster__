@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DisasterNet Family Status Search</title>
+<style>
+:root {
+  --bg: #060d16;
+  --surface: #0b1522;
+  --border: #1b2e46;
+  --accent: #00d4ff;
+  --text: #c8e0f0;
+  --text2: #7fa0ba;
+  --warn: #ffcc00;
+  --danger: #ff1744;
+  --ok: #00c851;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: radial-gradient(circle at 10% 0%, rgba(0,212,255,0.12), transparent 42%), var(--bg);
+  color: var(--text);
+}
+.wrap {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 18px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.small { color: var(--text2); font-size: 13px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input, button {
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: #06101a;
+  color: var(--text);
+  padding: 10px 12px;
+}
+input { flex: 1; min-width: 220px; }
+button { cursor: pointer; background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.35); }
+button:hover { background: rgba(0,212,255,0.2); }
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+.badge.Missing { color: var(--danger); border-color: var(--danger); }
+.badge.Located { color: var(--accent); border-color: var(--accent); }
+.badge.Displaced { color: var(--warn); border-color: var(--warn); }
+.badge.Hospitalised { color: #ff8a4a; border-color: #ff8a4a; }
+.badge.Deceased { color: #99a4b0; border-color: #99a4b0; }
+.result {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.01);
+}
+.result-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.result-meta { margin-top: 6px; color: var(--text2); font-size: 13px; }
+.hidden { display: none; }
+.note { color: var(--warn); font-size: 12px; margin-top: 6px; }
+.demo-banner {
+  color: var(--warn);
+  font-size: 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,204,0,0.3);
+  border-radius: 8px;
+  background: rgba(255,204,0,0.08);
+}
+.kv { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--text2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Family Status Search</h1>
+    <div class="small">Search by name or phone. Public results only show status, last seen zone, and last update time.</div>
+    <div class="row" style="margin-top:10px">
+      <input id="q" placeholder="Name or phone number" />
+      <button onclick="searchPersons()">Search</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultsCard">
+    <div id="results"></div>
+  </div>
+
+  <div class="card hidden" id="claimCard">
+    <h3 style="margin-top:0">OTP Family Claim</h3>
+    <div class="small" id="claimTarget"></div>
+    <div class="demo-banner hidden" id="demoBanner" role="status"></div>
+    <div class="row" style="margin-top:10px">
+      <input id="claimPhone" placeholder="Registered family phone" />
+      <button id="btnRequestOtp" onclick="requestOtp()" aria-label="Request OTP to phone number">Request OTP</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="claimOtp" placeholder="Enter OTP" aria-label="One-time password" />
+      <button id="btnVerifyOtp" onclick="verifyOtp()" aria-label="Verify OTP and unlock record">Verify OTP</button>
+    </div>
+    <div class="note" id="otpNote"></div>
+    <div class="kv" id="claimDetails"></div>
+  </div>
+</div>
+
+<script>
+// Smart API base: use same origin in production, fall back to demo mode if unreachable
+const API_BASE = (() => {
+  const origin = window.location.origin;
+  if (origin.startsWith('http://localhost') || origin.startsWith('http://127')) return origin;
+  return ''; // same-origin in production; demo mode handles failures gracefully
+})();
+
+// ─── Demo-mode data (shown when backend is unavailable) ─────────────────────
+const DEMO_RECORDS = [
+  { id:'P-MH1-001', name:'Priya Sharma',    status:'Located',     lastSeenZone:'MH1', lastUpdatedAt: Date.now()-3600000,
+    phone:'98XXXXXX12', note:'Evacuated to Dharavi relief camp', anchorCid:'bafybeig3demo001', compensation:null },
+  { id:'P-OD1-007', name:'Ramesh Nayak',    status:'Hospitalised',lastSeenZone:'OD1', lastUpdatedAt: Date.now()-7200000,
+    phone:'76XXXXXX44', note:'Treated at Puri District Hospital — stable', anchorCid:'bafybeig3demo007', compensation:{amount:'₹50,000',txHash:'0xSTARKNET…demo'} },
+  { id:'P-AP1-003', name:'Lakshmi Devi',    status:'Missing',     lastSeenZone:'AP1', lastUpdatedAt: Date.now()-14400000,
+    phone:'94XXXXXX67', note:'Last seen near Vijayawada flood zone', anchorCid:null, compensation:null },
+  { id:'P-BH1-019', name:'Arjun Kumar',     status:'Displaced',   lastSeenZone:'BH1', lastUpdatedAt: Date.now()-1800000,
+    phone:'85XXXXXX30', note:'At Patna evacuation centre — safe', anchorCid:'bafybeig3demo019', compensation:null },
+  { id:'P-UK1-002', name:'Sunita Rawat',    status:'Located',     lastSeenZone:'UK1', lastUpdatedAt: Date.now()-900000,
+    phone:'99XXXXXX88', note:'Rescued from Chamoli GLOF zone — minor injuries', anchorCid:'bafybeig3demo002', compensation:null },
+];
+
+let selectedPersonId = null;
+let otpCooldownUntil = 0;
+let otpCountdownTimer = null;
+let pendingDemoOtp = null;
+let isDemoMode = false;
+
+function safeText(v) {
+  return String(v || '').replace(/[<>&"'`]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;','`':'&#96;'}[ch]));
+}
+
+function setDemoMode(active, message) {
+  isDemoMode = active;
+  const banner = document.getElementById('demoBanner');
+  if (!banner) return;
+  if (active) {
+    banner.classList.remove('hidden');
+    banner.textContent = message || 'Demo mode active. Backend offline; OTP verification uses a fixed demo code.';
+  } else {
+    banner.classList.add('hidden');
+    banner.textContent = '';
+  }
+}
+
+async function tryFetch(url, opts) {
+  try {
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { ok: true, data: await res.json() };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function searchPersons() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+
+  const container = document.getElementById('results');
+  document.getElementById('resultsCard').classList.remove('hidden');
+  container.innerHTML = '<div class="small" aria-live="polite">Searching…</div>';
+
+  // Try live backend first
+  const apiResult = await tryFetch(`${API_BASE}/api/v1/family/search?query=${encodeURIComponent(q)}`);
+
+  let results;
+  if (apiResult.ok && apiResult.data?.results) {
+    results = apiResult.data.results;
+    setDemoMode(false);
+  } else {
+    // Demo fallback — fuzzy match against local records
+    setDemoMode(true, 'Backend offline — showing demo records. OTP verification uses a fixed demo code.');
+    const lq = q.toLowerCase();
+    results = DEMO_RECORDS.filter(r => r.name.toLowerCase().includes(lq) || r.phone?.includes(q) || r.id.toLowerCase().includes(lq));
+  }
+
+  if (!results.length) {
+    container.innerHTML = `<div class="small" role="status">No matching records found${isDemoMode ? ' <span style="color:var(--warn)">(demo data — backend offline)</span>' : ''}.</div>`;
+    return;
+  }
+
+  container.innerHTML = (isDemoMode ? '<div class="note" role="status">⚠ Backend offline — showing demo records for evaluation</div>' : '') +
+    results.map(r => `
+    <div class="result" role="article">
+      <div class="result-top">
+        <strong>${safeText(r.name)}</strong>
+        <span class="badge ${safeText(r.status)}" aria-label="Status: ${safeText(r.status)}">${safeText(r.status)}</span>
+      </div>
+      <div class="result-meta">Last seen zone: <strong>${safeText(r.lastSeenZone)}</strong> · Last update: <strong>${new Date(r.lastUpdatedAt).toLocaleString('en-IN')}</strong></div>
+      <div style="margin-top:8px">
+        <button onclick="openClaim('${safeText(r.id)}','${safeText(r.name)}')" aria-label="Request detailed record for ${safeText(r.name)}">Claim Detailed Record (OTP)</button>
+      </div>
+    </div>`).join('');
+}
+
+function openClaim(personId, personName) {
+  selectedPersonId = personId;
+  document.getElementById('claimCard').classList.remove('hidden');
+  document.getElementById('claimTarget').textContent = `Selected: ${personName} (${personId})`;
+  document.getElementById('otpNote').textContent = '';
+  document.getElementById('claimDetails').textContent = '';
+  document.getElementById('claimPhone').focus();
+}
+
+function setOtpNote(message, isError = false) {
+  const el = document.getElementById('otpNote');
+  el.style.color = isError ? 'var(--danger)' : 'var(--warn)';
+  el.textContent = message;
+  el.setAttribute('aria-live', 'polite');
+}
+
+function setOtpButtonsEnabled(enabled) {
+  const reqBtn = document.getElementById('btnRequestOtp');
+  const verBtn = document.getElementById('btnVerifyOtp');
+  if (reqBtn) reqBtn.disabled = !enabled;
+  if (verBtn) verBtn.disabled = !enabled;
+}
+
+function startOtpCooldown(seconds) {
+  otpCooldownUntil = Date.now() + Math.max(0, Number(seconds || 0)) * 1000;
+  if (otpCountdownTimer) clearInterval(otpCountdownTimer);
+  setOtpButtonsEnabled(false);
+  otpCountdownTimer = setInterval(() => {
+    const remaining = Math.max(0, Math.ceil((otpCooldownUntil - Date.now()) / 1000));
+    if (remaining <= 0) {
+      clearInterval(otpCountdownTimer); otpCountdownTimer = null;
+      setOtpButtonsEnabled(true); setOtpNote('You can now request a fresh OTP.');
+      return;
+    }
+    setOtpNote(`OTP issued. Wait ${remaining}s before requesting again.`);
+  }, 1000);
+}
+
+async function requestOtp() {
+  if (!selectedPersonId) return;
+  const phone = document.getElementById('claimPhone').value.trim();
+  if (!phone) { setOtpNote('Please enter a phone number.', true); return; }
+  if (Date.now() < otpCooldownUntil) {
+    setOtpNote(`Please wait ${Math.ceil((otpCooldownUntil - Date.now())/1000)}s.`, true); return;
+  }
+
+  if (isDemoMode) {
+    // Demo OTP: fixed code for evaluation flow
+    pendingDemoOtp = '123456';
+    setDemoMode(true, 'Demo mode active. Backend offline; OTP verification uses the fixed demo code.');
+    setOtpNote('[DEMO] OTP sent. Use code: 123456 (backend offline — evaluation mode)');
+    startOtpCooldown(60);
+    return;
+  }
+
+  const result = await tryFetch(`${API_BASE}/api/v1/persons/${selectedPersonId}/family/request-otp`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone })
+  });
+  if (!result.ok) {
+    setOtpNote('OTP request failed — switching to demo mode.', true);
+    setDemoMode(true, 'OTP service offline — demo mode active.');
+    await requestOtp();
+    return;
+  }
+  const data = result.data;
+  if (!data.ok) {
+    if (data.waitSeconds) { startOtpCooldown(data.waitSeconds); return; }
+    setOtpNote(data.message || 'OTP request failed.', true); return;
+  }
+  setOtpNote(`OTP sent. Expires in ${data.expiresInSeconds || 300}s.${data.demoOtp ? ' Demo OTP: '+data.demoOtp : ''}`);
+  startOtpCooldown(data.expiresInSeconds || 300);
+}
+
+async function verifyOtp() {
+  if (!selectedPersonId) return;
+  const phone = document.getElementById('claimPhone').value.trim();
+  const otp   = document.getElementById('claimOtp').value.trim();
+  if (!otp) { setOtpNote('Please enter the OTP.', true); return; }
+
+  if (isDemoMode) {
+    if (otp !== pendingDemoOtp) { setOtpNote('Incorrect OTP. Use 123456 in demo mode.', true); return; }
+    const record = DEMO_RECORDS.find(r => r.id === selectedPersonId);
+    if (!record) { setOtpNote('Record not found.', true); return; }
+    renderClaimDetails(record);
+    return;
+  }
+
+  const result = await tryFetch(`${API_BASE}/api/v1/persons/${selectedPersonId}/family/verify-otp`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone, otp })
+  });
+  if (!result.ok) { setOtpNote('Verification failed — backend unreachable.', true); return; }
+  const data = result.data;
+  if (!data.ok) {
+    const attempts = typeof data.remainingAttempts === 'number' ? ` (${data.remainingAttempts} attempts left)` : '';
+    setOtpNote((data.message || 'OTP verification failed') + attempts, true); return;
+  }
+  renderClaimDetails(data.person);
+}
+
+function renderClaimDetails(p) {
+  document.getElementById('claimDetails').innerHTML = `
+    <div><strong>Status:</strong> ${safeText(p.status)}</div>
+    <div><strong>Last seen zone:</strong> ${safeText(p.lastSeenZone)}</div>
+    <div><strong>Contact:</strong> ${safeText(p.phone || 'N/A')}</div>
+    <div><strong>Notes:</strong> ${safeText(p.note || 'N/A')}</div>
+    <div><strong>Anchor CID:</strong> ${p.anchorCid ? `<a href="https://w3s.link/ipfs/${safeText(p.anchorCid)}" target="_blank" rel="noopener" style="color:var(--accent)">${safeText(p.anchorCid.substring(0,20))}…</a>` : 'N/A'}</div>
+    <div><strong>Compensation:</strong> ${p.compensation ? `${safeText(p.compensation.amount)} · TX ${safeText(p.compensation.txHash)}` : 'Not yet processed'}</div>
+  `;
+  if (otpCountdownTimer) { clearInterval(otpCountdownTimer); otpCountdownTimer = null; }
+  setOtpButtonsEnabled(true);
+  setOtpNote('✓ OTP verified. Detailed record unlocked.');
+}
+</script>
+</body>
+</html>

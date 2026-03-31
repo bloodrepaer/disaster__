@@ -1,0 +1,18 @@
+{
+  "name": "DisasterNet",
+  "short_name": "DisasterNet",
+  "description": "AI-powered multi-role disaster coordination for India.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#040810",
+  "theme_color": "#040810",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "disasternet",
+  "version": "1.0.0",
+  "description": "AI-powered multi-role disaster coordination for India",
+  "private": true,
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

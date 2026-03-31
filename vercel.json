@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/api/ai-proxy",                                    "dest": "/api/ai-proxy.js" },
+    { "src": "/health",                                          "dest": "/api/health.js" },
+    { "src": "/api/v1/family/search",                            "dest": "/api/v1/family.js" },
+    { "src": "/api/v1/persons/([^/]+)/family/request-otp",       "dest": "/api/v1/family.js" },
+    { "src": "/api/v1/persons/([^/]+)/family/verify-otp",        "dest": "/api/v1/family.js" },
+    { "src": "/api/v1/persons/([^/]+)/status",                   "dest": "/api/v1/person-status.js" },
+    { "src": "/api/v1/persons",                                  "dest": "/api/v1/persons.js" },
+    { "src": "/api/v1/sms",                                      "dest": "/api/v1/sync.js" },
+    { "src": "/api/v1/sync-bundles",                             "dest": "/api/v1/sync.js" },
+    { "src": "/api/v1/anchors",                                  "dest": "/api/v1/sync.js" },
+    { "src": "/api/v1/anchor-receipts",                          "dest": "/api/v1/sync.js" },
+    {
+      "src": "/(.*)",
+      "dest": "/$1",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "geolocation=(self)"
+      }
+    }
+  ],
+  "buildCommand": null,
+  "outputDirectory": "."
+}

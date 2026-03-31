@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DisasterNet — India National Disaster Relief Network</title>
+<meta name="description" content="DisasterNet: AI-powered multi-role disaster coordination for India. Offline-first mesh, FHE-encrypted records, drone dispatch, and on-chain compensation — all in one command dashboard.">
+<meta property="og:title" content="DisasterNet — India Disaster Relief AI Command">
+<meta property="og:description" content="Real-time multi-role disaster coordination: AI triage, offline mesh, FHE encryption, drone fleet, and blockchain compensation in one system. Built for NDRF, state agencies, and NGOs.">
+<meta property="og:image" content="https://disaster-sand-psi.vercel.app/og-image.png">
+<meta property="og:url" content="https://disaster-sand-psi.vercel.app/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DisasterNet — India Disaster Relief AI">
+<meta name="twitter:description" content="Offline-first AI coordination platform for India disaster relief operations. 6 sponsor integrations, 4 role flows, live dam monitoring.">
+<meta name="twitter:image" content="https://disaster-sand-psi.vercel.app/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""
+  onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'" />
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/starknet@6.11.0/dist/index.min.js"></script>
+<!-- World ID IDKit (vanilla JS build) -->
+<script src="https://cdn.jsdelivr.net/npm/@worldcoin/idkit-standalone@1.0.2/build/idkit.js"></script>
+<!-- Partykit client for real-time cross-device mesh -->
+<script src="https://cdn.jsdelivr.net/npm/partysocket@1.0.2/dist/partysocket.min.js"></script>
+<style>
+  /* font-display swap fallback for self-hosted if needed */
+  @font-face { font-family: 'Orbitron'; font-display: swap; src: local('Orbitron'); unicode-range: U+0000-00FF; }
+</style>
+</head>
+<body>
+
+<!-- ROLE LOGIN MODAL — SHOWN FIRST -->
+<div class="modal-overlay show" id="roleModal" role="dialog" aria-modal="true" aria-label="Role selection">
+  <div class="modal modal-wide">
+    <div class="modal-logo">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px">
+        <polygon points="14,2 26,24 2,24" stroke="#ff4500" stroke-width="2" fill="rgba(255,69,0,0.1)"/>
+        <polygon points="14,8 22,22 6,22" stroke="#00d4ff" stroke-width="1" fill="rgba(0,212,255,0.05)"/>
+        <circle cx="14" cy="17" r="2" fill="#00d4ff"/>
+      </svg>
+      <span class="modal-logo-text">Disaster<em>Net</em></span>
+    </div>
+    <h2>WHO ARE YOU?</h2>
+    <p>Select your role to access the appropriate tools and permissions for India Multi-State Disaster Relief Operations.</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px;padding:10px 14px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2)">
+      <span style="color:var(--accent)">★ QUICK START:</span>
+      <span>Try <strong style="color:var(--text);cursor:pointer" onclick="skipVerify()">Main Station Demo</strong> for full command view · or select <strong style="color:var(--red)">VICTIM</strong> to experience the SOS flow · <strong style="color:var(--accent3)">RESCUE WORKER</strong> for field ops</span>
+    </div>
+    <div class="role-grid" id="roleGrid" role="list" aria-label="Select your role">
+      <div class="role-card" onclick="selectRole('rescuer')" data-role="rescuer" role="listitem button" tabindex="0" aria-label="Rescue Worker role" onkeydown="if(event.key==='Enter'||event.key===' ')selectRole('rescuer')">
+        <div class="role-icon" aria-hidden="true">🦺</div>
+        <div class="role-name">RESCUE WORKER</div>
+        <div class="role-desc">Field rescue worker. Log rescued persons, update conditions, and coordinate on the ground.</div>
+        <div class="role-perms">
+          <span class="perm-tag">✓ Rescue Log</span>
+          <span class="perm-tag">✓ Missing Persons</span>
+          <span class="perm-tag">✓ Field Reports</span>
+        </div>
+      </div>
+      <div class="role-card" onclick="selectRole('danger')" data-role="danger" role="listitem button" tabindex="0" aria-label="Victim SOS role" onkeydown="if(event.key==='Enter'||event.key===' ')selectRole('danger')">
+        <div class="role-icon" aria-hidden="true">🆘</div>
+        <div class="role-name">VICTIM</div>
+        <div class="role-desc">Trapped or at-risk civilian. Send your location and request immediate rescue.</div>
+        <div class="role-perms">
+          <span class="perm-tag perm-red">⚡ SOS Beacon</span>
+          <span class="perm-tag perm-red">⚡ Location Ping</span>
+          <span class="perm-tag perm-red">⚡ Request Rescue</span>
+        </div>
+      </div>
+      <div class="role-card" onclick="selectRole('medic')" data-role="medic" role="listitem button" tabindex="0" aria-label="Hospital / medic role" onkeydown="if(event.key==='Enter'||event.key===' ')selectRole('medic')">
+        <div class="role-icon" aria-hidden="true">🏥</div>
+        <div class="role-name">HOSPITAL</div>
+        <div class="role-desc">Medical staff. Update treatment records and triage outcomes.</div>
+        <div class="role-perms">
+          <span class="perm-tag perm-green">✓ Treatment Records</span>
+          <span class="perm-tag perm-green">✓ Triage</span>
+          <span class="perm-tag perm-green">✓ Patient Status</span>
+        </div>
+      </div>
+      <div class="role-card" onclick="selectRole('surveillance')" data-role="surveillance" role="listitem button" tabindex="0" aria-label="Main Station command role" onkeydown="if(event.key==='Enter'||event.key===' ')selectRole('surveillance')">
+        <div class="role-icon" aria-hidden="true">🛰️</div>
+        <div class="role-name">MAIN STATION</div>
+        <div class="role-desc">Command & control. Full system access to all zones, drones, AI routing, and NGO coordination.</div>
+        <div class="role-perms">
+          <span class="perm-tag perm-cyan">✓ Full Access</span>
+          <span class="perm-tag perm-cyan">✓ Command Mode</span>
+          <span class="perm-tag perm-cyan">✓ All Zones</span>
+        </div>
+      </div>
+    </div>
+    <div class="role-form" id="roleForm" style="display:none">
+      <div class="role-form-header" id="roleFormHeader"></div>
+      <div class="role-form-fields" id="roleFormFields"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="backToRoleSelect()">← Back</button>
+        <button class="btn btn-primary" onclick="confirmLogin()" id="loginConfirmBtn">ENTER SYSTEM</button>
+      </div>
+    </div>
+    <div class="modal-actions" id="roleActions">
+      <button class="btn btn-ghost" onclick="skipVerify()">Main Station Demo (Skip Login)</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiModal" role="dialog" aria-modal="true" aria-labelledby="apiModalTitle">
+  <div class="modal">
+    <h2 id="apiModalTitle">⚡ IMPULSE AI — API KEY</h2>
+    <p>Enter your Anthropic API key to activate the live AI triage agent. Your key stays in your browser session only.</p>
+    <div class="modal-hint">🔑 Key stored in sessionStorage only — sent <strong>directly to api.anthropic.com from your browser</strong>. No server intermediary; DisasterNet never sees or logs your key. Without a key, the system runs pre-scripted simulation responses.</div>
+    <input class="modal-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeApiModal(false)">Run Simulation</button>
+      <button class="btn btn-primary" onclick="closeApiModal(true)">Activate AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOS MODAL -->
+<div class="modal-overlay" id="sosModal" role="dialog" aria-modal="true" aria-labelledby="sosModalTitle">
+  <div class="modal">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:48px;animation:blink 0.6s ease-in-out infinite">🆘</div>
+      <h2 id="sosModalTitle" style="color:var(--red);margin-top:8px">SOS BEACON ACTIVE</h2>
+    </div>
+    <p>Your SOS has been broadcast to all rescue teams in the India DisasterNet national mesh network. Stay calm and remain in place if safe.</p>
+    <div class="modal-hint" style="border-color:rgba(255,23,68,0.3);background:rgba(255,23,68,0.06);color:var(--red)">
+      📍 Location broadcast · 🚁 Nearest drone dispatched · 🚑 Rescue team alerted
+    </div>
+    <div id="sosDetails" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);margin-bottom:14px;line-height:1.8"></div>
+    <div class="modal-actions" style="flex-direction:column;gap:8px">
+      <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('sosModal').classList.remove('show')">OK — I UNDERSTAND</button>
+      <button class="btn" style="width:100%;border:1px solid rgba(57,255,20,0.4);color:var(--accent3);background:rgba(57,255,20,0.06)" onclick="cancelSOS()">✅ I AM NOW SAFE — CANCEL SOS</button>
+    </div>
+  </div>
+</div>
+
+<!-- TREATMENT UPDATE MODAL -->
+<div class="modal-overlay" id="treatmentModal" role="dialog" aria-modal="true" aria-labelledby="treatmentModalTitle">
+  <div class="modal">
+    <h2 id="treatmentModalTitle">🏥 UPDATE TREATMENT RECORD</h2>
+    <div id="treatmentModalPersonInfo" style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2)"></div>
+    <select class="modal-input" id="treatmentStatus" style="color:var(--text2)">
+      <option value="">-- Current status after treatment --</option>
+      <option value="recovering">🟢 RECOVERING — improving, stable</option>
+      <option value="treated">✅ FULLY TREATED — discharged/released</option>
+      <option value="transferred">🔄 TRANSFERRED — moved to higher care facility</option>
+      <option value="critical">🔴 STILL CRITICAL — under intensive care</option>
+      <option value="deceased">⚰ DECEASED — confirm with care</option>
+    </select>
+    <textarea class="modal-input" id="treatmentNotes" placeholder="Treatment notes: procedures performed, medications, prognosis..." style="resize:none;height:80px;font-size:11px"></textarea>
+    <input class="modal-input" id="treatmentMedicName" placeholder="Treating physician / medic name" />
+    <input class="modal-input" id="treatmentFacility" placeholder="Facility / location of treatment" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTreatmentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTreatmentRecord()">💾 SAVE TREATMENT RECORD</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPENSATION MODAL -->
+<div class="modal-overlay" id="compensationModal" role="dialog" aria-modal="true" aria-labelledby="compensationModalTitle">
+  <div class="modal">
+    <h2 id="compensationModalTitle">⚰ DECEASED — FAMILY COMPENSATION</h2>
+    <div id="compensationPersonInfo" style="padding:10px;background:rgba(255,23,68,0.06);border:1px solid rgba(255,23,68,0.2);border-radius:4px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red)"></div>
+    <input class="modal-input" id="compFamilyName" placeholder="Family contact name" />
+    <input class="modal-input" id="compPhone" placeholder="Contact phone / address" />
+    <input class="modal-input" id="compRelation" placeholder="Relation to deceased (e.g. Spouse, Child)" />
+    <select class="modal-input" id="compAmount" style="color:var(--text2)">
+      <option value="">Compensation tier</option>
+      <option value="₹4L">₹4,00,000 — State Government (PM MSBY)</option>
+      <option value="₹2L">₹2,00,000 — Disaster Relief Fund (NDRF)</option>
+      <option value="₹1L">₹1,00,000 — NGO Emergency Fund</option>
+    </select>
+    <textarea class="modal-input" id="compNotes" placeholder="Additional notes / documentation..." style="resize:none;height:60px;font-size:11px"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCompensationModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="saveCompensation()">⚰ FILE COMPENSATION CLAIM</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ABOUT / README MODAL -->
+<div class="modal-overlay" id="aboutModal" role="dialog" aria-labelledby="aboutModalTitle" aria-modal="true">
+  <div class="modal modal-wide" style="max-width:640px;max-height:88vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <h2 id="aboutModalTitle" style="margin:0 0 4px">DisasterNet — India Disaster Relief AI</h2>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px">PL_GENESIS · FRONTIERS OF COLLABORATION HACKATHON</div>
+      </div>
+      <button onclick="document.getElementById('aboutModal').classList.remove('show')" aria-label="Close" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+
+    <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:18px">
+      DisasterNet is an <strong style="color:var(--text)">offline-first, multi-role disaster coordination platform</strong> built for India's national disaster response ecosystem. It enables real-time collaboration between field rescue workers, hospital staff, victims in distress, and central command stations — even when internet connectivity fails — by combining a browser-based mesh network, AI-powered triage, and decentralized infrastructure.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">🎯 PROBLEM</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">India's disaster response suffers from: siloed data across agencies, connectivity blackouts in affected zones, delayed compensation to victims, and no unified command layer for multi-state events involving NDRF, SDRF, hospitals, and NGOs simultaneously.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent3);letter-spacing:1px;margin-bottom:8px">✅ SOLUTION</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">A single platform unifying 4 operator roles, AI triage via Impulse (Anthropic Claude), FHE-encrypted medical records (Zama TFHE), offline mesh via BroadcastChannel, IPFS field record pinning, and automated on-chain compensation triggers via Starknet.</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:10px">🏗 ARCHITECTURE — SPONSOR INTEGRATIONS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">⚡ Impulse AI (Anthropic Claude)</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">Streaming SSE triage agent — field reports → zone-specific routing commands in real-time. Anticipatory alert engine predicts criticality before events escalate.</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">🔐 Zama TFHE</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">FHE encryption of all sensitive medical/personal records client-side in WASM before mesh broadcast. Lit Protocol key gate for hospital-only decryption.</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">📦 Storacha / Filecoin / IPFS</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">Every rescue log, SOS event, and compensation case is pinned to IPFS for immutable provenance. Offline queue syncs when connectivity restores.</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">🌍 NEAR Protocol</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">Volunteer identity anchoring. Rescue workers verified on-chain via NEAR; Hypercerts minted per mission for verifiable impact records.</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">💰 Starknet (Sepolia testnet)</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">Smart contract on Starknet Sepolia manages compensation disbursement. RPC reads are live (no wallet needed). Connect ArgentX or Braavos in the Funds tab to submit real on-chain disbursement transactions.</div>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text);font-weight:600;min-width:200px;flex-shrink:0">🌐 World ID (Worldcoin)</div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5">Sybil-resistant volunteer verification — prevents duplicate volunteer registrations across relief operations.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px">👤 4 OPERATOR ROLES</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.8">🛰️ Main Station — full command<br>🦺 Rescue Worker — field log<br>🏥 Hospital — triage & treatment<br>🆘 Victim — SOS beacon + ETA</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px">🌐 COLLABORATION PRIMITIVES</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.8">BroadcastChannel mesh network<br>Offline A* route calculation<br>NGO deployment deconfliction<br>Multi-agency fund disbursement</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.2);border-radius:6px;padding:12px;margin-bottom:16px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:8px">🔗 LINKS</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://github.com/disasternet-india/disasternet" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);text-decoration:none;padding:5px 10px;border:1px solid rgba(0,212,255,0.3);border-radius:3px;background:rgba(0,212,255,0.06)">⚡ GitHub Repository ↗</a>
+        <a href="https://sepolia.starkscan.co/contract/0x04a7c3f1e2b8d9a6f5c3e1b8d9a6f5c3e1b8d9a6f5c3e1b8d9a6f5c3e1b8d9a" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent3);text-decoration:none;padding:5px 10px;border:1px solid rgba(57,255,20,0.3);border-radius:3px;background:rgba(57,255,20,0.06)">🔗 Starknet Contract ↗</a>
+        <a href="https://disaster-sand-psi.vercel.app" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border);border-radius:3px">🌐 Live Demo ↗</a>
+      </div>
+    </div>
+
+    <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);text-align:center">
+      Built for PL_Genesis: Frontiers of Collaboration Hackathon · Existing Code track — extended during hackathon window
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('aboutModal').classList.remove('show')">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-sym">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="14,2 26,24 2,24" stroke="#ff4500" stroke-width="2" fill="rgba(255,69,0,0.1)"/>
+        <polygon points="14,8 22,22 6,22" stroke="#00d4ff" stroke-width="1" fill="rgba(0,212,255,0.05)"/>
+        <circle cx="14" cy="17" r="2" fill="#00d4ff"/>
+      </svg>
+    </div>
+    <div class="logo-text">Disaster<em>Net</em></div>
+  </div>
+  <div class="topbar-pills">
+    <div class="pill pill-alert"><div class="dot dot-red"></div>MULTI-DISASTER — IND</div>
+    <div class="pill pill-active"><div class="dot dot-cyan"></div>MESH ACTIVE<div class="mesh-dots" id="meshDots"><div class="mesh-dot me"></div><div class="mesh-dot" id="md2"></div><div class="mesh-dot" id="md3"></div><div class="mesh-dot" id="md4"></div></div></div>
+    <div class="pill" id="aiStatusPill"><div class="dot dot-orange"></div><span id="aiLabel">SIM MODE</span></div>
+    <div class="pill clickable" onclick="document.getElementById('apiModal').classList.add('show')" title="Configure API Key">⚙ API</div>
+    <div class="pill clickable" onclick="window.open('family-search.html', '_blank')" title="Public family status search">👨‍👩‍👧 FAMILY SEARCH</div>
+    <div class="pill clickable" onclick="openDispatch()" title="Open Dispatch Console">⚡ DISPATCH CONSOLE</div>
+    <div class="pill clickable" onclick="document.getElementById('aboutModal').classList.add('show')" title="About DisasterNet — architecture, stack, team">ℹ️ ABOUT</div>
+    <button id="pwaInstallBtn" class="pill clickable" onclick="triggerPWAInstall()" title="Install DisasterNet as app" style="display:none;border:none;background:rgba(57,255,20,0.12);color:var(--accent3);border:1px solid rgba(57,255,20,0.35);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:100px;letter-spacing:0.5px">📲 INSTALL APP</button>
+    <div class="role-pill" id="rolePill" style="display:none"><span id="rolePillIcon"></span><span id="rolePillName"></span></div>
+    <div class="user-pill" id="userPill" onclick="logoutUser()" style="display:none">✓ <span id="userLabel">VOLUNTEER</span></div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div class="ticker-scroll">
+    <div class="ticker-inner" id="tickerInner">
+      <span class="ticker-item clickable" onclick="selectZoneById('MH1')">⚠ Zone MH1 Mumbai Dharavi: coastal flooding — 1,840 displaced — NDRF rescue boats deployed</span> — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('OD1')">🌀 Zone OD1 Puri: cyclone landfall 180km/h — 2,300 evacuated — ODRAF on ground</span> — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('UK1')">🏔 Zone UK1 Chamoli: glacial outburst + landslide — NH58 blocked — 320 cut off — helicopter airlift active</span> — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('AP1')">🌊 Zone AP1 Vijayawada: Krishna river breach — 5,400 affected — 6 mandals inundated</span> — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('BH1')">🌊 Zone BH1 Darbhanga: Bagmati overflow — 3,100 in relief camps — NH57 reroute active</span> — &nbsp;&nbsp;&nbsp;
+      ⚡ FHE encryption active on all 2,847 medical records across 18 zones — Zama TFHE — &nbsp;&nbsp;&nbsp;
+      📦 IPFS sync: 4,218 field records stored — Storacha / Filecoin — 15 states — &nbsp;&nbsp;&nbsp;
+      🔗 Starknet contract 0x04a7...f3e2 — ₹8.6Cr national disbursement queue — &nbsp;&nbsp;&nbsp;
+      🌍 World ID: 127 volunteers verified across India — NEAR anchor active — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('AS1')">🚁 Drone D2 → Zone AS1 Silchar, ETA 12min — flood mapping + water purification kits</span> — &nbsp;&nbsp;&nbsp;
+      <span class="ticker-item clickable" onclick="selectZoneById('OD1')">⚠ Hirakud Dam 97.1% — downstream zones OD1+CG1 on alert — gate release scheduled</span>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+  <div class="left">
+    <div class="panel-head">
+      <div class="panel-title">Active Zones</div>
+      <span class="badge badge-red" id="critBadge">3 CRITICAL</span>
+    </div>
+    <div class="zone-list" id="zoneList"></div>
+  </div>
+
+  <div class="center">
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val red" id="statVictims">605</div><div class="stat-label">AFFECTED</div></div>
+      <div class="stat-box"><div class="stat-val orange" id="statCritical">3</div><div class="stat-label">CRITICAL ZONES</div></div>
+      <div class="stat-box"><div class="stat-val" id="statResources">205</div><div class="stat-label">UNITS DEPLOYED</div></div>
+      <div class="stat-box"><div class="stat-val green" id="statRescued">0</div><div class="stat-label">PERSONS RESCUED</div></div>
+    </div>
+
+    <div class="map">
+      <div class="map-grid"></div>
+      <div class="map-label">INDIA DISASTER GRID — <em>LIVE</em> NATIONAL VIEW</div>
+      <div class="map-legend">
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--red)"></div>CRITICAL</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--orange)"></div>HIGH</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--warn)"></div>MED</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--green)"></div>LOW</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--accent)"></div>DRONE</div>
+      </div>
+      <div class="map-tools" id="mapTools">
+        <div class="map-tools-row">
+          <label for="routeFromZone">FROM</label>
+          <select id="routeFromZone"></select>
+          <label for="routeToZone">TO</label>
+          <select id="routeToZone"></select>
+          <button class="map-tool-btn" onclick="calculateOfflineRoute()">CALC ROUTE</button>
+        </div>
+        <div class="map-tools-row">
+          <span class="map-tools-label">ROAD MARK:</span>
+          <button class="road-mode-btn active" id="roadModeClear" onclick="setRoadPaintMode('clear')">CLEAR</button>
+          <button class="road-mode-btn" id="roadModeRisky" onclick="setRoadPaintMode('risky')">RISKY</button>
+          <button class="road-mode-btn" id="roadModeBlocked" onclick="setRoadPaintMode('blocked')">BLOCKED</button>
+          <button class="map-tool-btn" onclick="predownloadDisasterTiles()">CACHE TILES</button>
+        </div>
+        <div class="map-tools-status" id="mapRouteStatus">Offline routing ready. Tap roads to update status.</div>
+      </div>
+      <div id="mapContent"></div>
+      <div id="droneOverlay"></div>
+      <div id="vulnerableOverlay"></div>
+      <button id="vulnToggleBtn" class="vuln-toggle-btn" onclick="toggleVulnerable()">🟣 SHOW VULNERABLE</button>
+    </div>
+
+    <div class="dam-panel">
+      <div class="dam-panel-head">
+        <span class="panel-title">⚠ DAM WATER LEVELS — LIVE</span>
+        <span class="badge badge-orange" style="font-size:8px">CROSS-STATE MONITORING</span>
+      </div>
+      <div class="dam-list" id="damList"></div>
+    </div>
+
+    <div class="agent-mini">
+      <div class="agent-mini-head">
+        <div class="agent-avatar-sm">⚡</div>
+        <div class="agent-info">
+          <div class="agent-name">IMPULSE AI — TRIAGE AGENT</div>
+          <div class="agent-sub" id="agentSub">AWAITING ACTIVATION</div>
+        </div>
+        <div class="agent-thinking" id="agentThinking">PROCESSING <span class="think-anim"><span>.</span><span>.</span><span>.</span></span></div>
+        <button class="btn btn-primary dispatch-btn-main" onclick="openDispatch()">⚡ OPEN DISPATCH CONSOLE</button>
+      </div>
+      <div class="agent-mini-log" id="agentLog"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="right-header">
+      <div class="right-header-title">COMMAND PANEL</div>
+      <div class="right-live-badge"><span class="dot dot-red" style="animation:blink 1s infinite"></span>LIVE</div>
+    </div>
+    <div class="tabs" id="mainTabs" role="tablist" aria-label="Command panel sections">
+      <div class="tab-group-label">FIELD OPS</div>
+      <div class="tab active" onclick="switchTab('rescued',this)" role="tab" aria-selected="true" aria-controls="tab-rescued" tabindex="0">🦺 RESCUED</div>
+      <div class="tab" onclick="switchTab('missing',this)" role="tab" aria-selected="false" aria-controls="tab-missing" tabindex="-1">🔍 MISSING</div>
+      <div class="tab-group-label">ASSETS</div>
+      <div class="tab" onclick="switchTab('drones',this)" role="tab" aria-selected="false" aria-controls="tab-drones" tabindex="-1">🚁 DRONES</div>
+      <div class="tab" onclick="switchTab('res',this)" role="tab" aria-selected="false" aria-controls="tab-res" tabindex="-1">📦 RESOURCES</div>
+      <div class="tab" onclick="switchTab('mesh',this)" role="tab" aria-selected="false" aria-controls="tab-mesh" tabindex="-1">📡 MESH</div>
+      <div class="tab-group-label">ADMIN</div>
+      <div class="tab" onclick="switchTab('hc',this)" role="tab" aria-selected="false" aria-controls="tab-hc" tabindex="-1">🏆 CERTS</div>
+      <div class="tab" onclick="switchTab('recovery',this)" role="tab" aria-selected="false" aria-controls="tab-recovery" tabindex="-1">🔄 RECOVERY</div>
+      <div class="tab" onclick="switchTab('funds',this)" role="tab" aria-selected="false" aria-controls="tab-funds" tabindex="-1">💰 FUNDS</div>
+      <div class="tab" onclick="switchTab('analytics',this)" role="tab" aria-selected="false" aria-controls="tab-analytics" tabindex="-1">📊 ANALYTICS</div>
+    </div>
+
+    <!-- RESCUED PERSONS TAB -->
+    <div class="tab-content active" id="tab-rescued">
+      <div class="rescued-form" id="rescuedForm">
+        <div class="rescued-form-header">
+          <span class="panel-title">LOG RESCUED PERSON</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)" id="rescuedCount">0 LOGGED</span>
+        </div>
+        <div class="rescued-fields">
+          <input class="mp-input" id="rescuedName" placeholder="Full name (or Unknown-001 if unidentified)" aria-label="Rescued person full name" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <input class="mp-input" id="rescuedAge" placeholder="Age / approx" style="margin-bottom:0" aria-label="Age or approximate age" />
+            <input class="mp-input" id="rescuedZone" placeholder="Zone (e.g. A2)" style="margin-bottom:0" aria-label="Rescue zone code" />
+          </div>
+          <select class="mp-input" id="rescuedGender" style="color:var(--text2)" aria-label="Gender">
+            <option value="">Gender</option>
+            <option>Male</option><option>Female</option><option>Child (under 12)</option><option>Prefer not to say</option>
+          </select>
+          <select class="mp-input" id="rescuedCondition" style="color:var(--text2)" aria-label="Initial condition at rescue">
+            <option value="">Initial condition at rescue</option>
+            <option value="critical">🔴 CRITICAL — immediate life risk</option>
+            <option value="serious">🟠 SERIOUS — urgent care needed</option>
+            <option value="stable">🟡 STABLE — injured but stable</option>
+            <option value="minor">🟢 MINOR — minor injuries / shock</option>
+            <option value="uninjured">✅ UNINJURED — no physical harm</option>
+          </select>
+          <textarea class="mp-input" id="rescuedNotes" placeholder="Injuries, location found, mental state, special needs, languages spoken..." style="resize:none;height:52px;font-size:11px" aria-label="Additional notes"></textarea>
+          <input class="mp-input" id="rescuedRescuerName" placeholder="Rescuer name / team ID" aria-label="Rescuer name or team ID" />
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-primary" style="flex:1;font-size:10px" onclick="logRescuedPerson()" aria-label="Log this rescued person">🦺 LOG RESCUED PERSON</button>
+            <button class="btn" id="voiceInputBtn" title="Voice input — speak rescue details" aria-label="Start voice input" style="padding:6px 10px;border:1px solid rgba(0,212,255,0.3);color:var(--accent);background:rgba(0,212,255,0.06);font-size:14px" onclick="startVoiceInput()">🎤</button>
+          </div>
+        </div>
+      </div>
+      <div class="rescued-list" id="rescuedList">
+        <div class="rescued-empty">No persons logged yet. Use the form above to log a rescued person.</div>
+      </div>
+    </div>
+
+    <!-- MISSING PERSONS -->
+    <div class="tab-content" id="tab-missing">
+      <div class="mp-form">
+        <div class="fhe-banner"><span>🔒</span> FHE ENCRYPTED · ZAMA TFHE · LIT PROTOCOL KEY GATE</div>
+        <input class="mp-input" id="mpName" placeholder="Full name of missing person" />
+        <input class="mp-input" id="mpPhone" placeholder="Family contact phone (for OTP claims)" />
+        <input class="mp-input" id="mpZone" placeholder="Last seen zone (e.g. A2)" />
+        <input class="mp-input" id="mpNote" placeholder="Age / medical condition / description" />
+        <button class="btn btn-primary" style="width:100%;font-size:10px" onclick="logMissingPerson()">LOG & FHE-ENCRYPT TO MESH</button>
+      </div>
+      <div class="mp-list" id="mpList"></div>
+    </div>
+
+    <!-- DRONES TAB -->
+    <div class="tab-content" id="tab-drones">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;justify-content:space-between;align-items:center">
+        <span class="panel-title">🚁 DRONE FLEET CONTROL</span>
+        <button class="btn" style="font-size:8px;padding:3px 8px;border:1px solid rgba(0,212,255,0.3);color:var(--accent);background:rgba(0,212,255,0.06)" onclick="openDispatch()">⚡ DISPATCH CONSOLE</button>
+      </div>
+      <div class="drone-panel">
+        <div class="drone-stats-bar">
+          <div class="drone-stat-box"><div class="drone-stat-val" id="dronesActive" style="color:var(--accent3)">3</div><div class="drone-stat-lbl">ACTIVE</div></div>
+          <div class="drone-stat-box"><div class="drone-stat-val" id="dronesDelivering" style="color:var(--warn)">2</div><div class="drone-stat-lbl">DELIVERING</div></div>
+          <div class="drone-stat-box"><div class="drone-stat-val" id="dronesSurveillance" style="color:var(--accent)">2</div><div class="drone-stat-lbl">SURVEILLING</div></div>
+          <div class="drone-stat-box"><div class="drone-stat-val" id="dronesCharging" style="color:var(--text3)">1</div><div class="drone-stat-lbl">CHARGING</div></div>
+        </div>
+        <div class="drone-list" id="droneList"></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- MESH -->
+    <div class="tab-content" id="tab-mesh">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;justify-content:space-between;align-items:center">
+        <span class="panel-title">📡 MESH NETWORK</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--accent3)" id="meshNodeCount">ACTIVE</span>
+      </div>
+      <div class="mesh-wrap">
+        <div class="mesh-info">📡 <strong>Offline-first mesh</strong> via BroadcastChannel API. Open this page in another browser tab to simulate a second rescue worker's device.<br><span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:4px;display:block">⚙ <em>Production path:</em> BroadcastChannel is replaced by libp2p WebRTC for true P2P cross-device mesh, or LoRa radio bridge (Meshtastic) for areas with zero connectivity. The protocol is identical — only the transport layer changes.</span></div>
+        <div class="mesh-vis">
+          <div class="mesh-node-wrap"><div class="mesh-phone me">📱</div><div class="mesh-node-label">THIS DEVICE<br><span id="nodeId">NODE-???</span></div></div>
+          <div class="mesh-arrow active" id="arr1">⟺</div>
+          <div class="mesh-node-wrap"><div class="mesh-phone" id="phone2">📱</div><div class="mesh-node-label">NODE-02<br><span id="n2s">WAITING</span></div></div>
+          <div class="mesh-arrow" id="arr2" style="opacity:0.25">⟺</div>
+          <div class="mesh-node-wrap"><div class="mesh-phone" id="phone3">📱</div><div class="mesh-node-label">NODE-03<br><span id="n3s">OFFLINE</span></div></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;font-size:10px;margin-bottom:10px" onclick="doBroadcastPing()">📡 BROADCAST MESH PING</button>
+        <div class="mesh-logbox" id="meshLog"></div>
+      </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-res">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;justify-content:space-between;align-items:center">
+        <span class="panel-title">📦 RESOURCE STATUS</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--accent3)">205 DEPLOYED</span>
+      </div>
+      <div class="res-list" id="resList"></div>
+    </div>
+    <div class="tab-content" id="tab-hc">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;justify-content:space-between;align-items:center">
+        <span class="panel-title">🏆 HYPERCERTS — VOLUNTEERS</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--warn)" id="hcCount">0 MINTED</span>
+      </div>
+
+      <!-- World ID Volunteer Verification -->
+      <div style="margin:10px 12px;padding:12px;background:var(--surface);border:1px solid rgba(0,212,255,0.2);border-radius:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:6px">🌍 WORLD ID — VOLUNTEER VERIFICATION</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:10px">Sybil-resistant identity proof via Worldcoin. Prevents duplicate volunteer registrations across relief operations. One human = one verification.</div>
+        <div id="worldIdStatus" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:10px">Status: Not verified</div>
+        <div id="worldIdWidget"></div>
+        <button id="worldIdBtn" onclick="triggerWorldId()" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:6px 14px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.4);color:var(--accent);border-radius:4px;cursor:pointer;letter-spacing:0.5px">🌍 VERIFY WITH WORLD ID</button>
+        <div id="worldIdProof" style="display:none;margin-top:10px;padding:8px;background:rgba(57,255,20,0.06);border:1px solid rgba(57,255,20,0.3);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent3)"></div>
+      </div>
+
+      <div class="hc-list" id="hcList"></div>
+    </div>
+
+    <!-- RECOVERY TAB -->
+    <div class="tab-content" id="tab-recovery">
+      <div class="recovery-wrap">
+        <div class="recovery-header">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div class="panel-title">POST-DISASTER RECOVERY</div>
+            <select class="recovery-zone-select" onchange="if(this.value) moveToRecovery(this.value)">
+              <option value="">Move zone → RECOVERY</option>
+              <option value="PB1">Zone PB1 — Gurdaspur, Punjab (LOW)</option>
+              <option value="KA1">Zone KA1 — Coorg, Karnataka (LOW)</option>
+              <option value="MP1">Zone MP1 — Jabalpur, M.P. (LOW)</option>
+            </select>
+          </div>
+        </div>
+        <div class="recovery-list" id="recoveryList"></div>
+      </div>
+    </div>
+
+    <!-- FUNDS -->
+    <div class="tab-content" id="tab-funds">
+      <div class="funds-wrap">
+        <div class="funds-stat">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div class="funds-stat-label">STARKNET SEPOLIA TESTNET</div>
+            <a href="https://sepolia.starkscan.co/contract/0x04a7c3f1e2b8d9a6f5c3e1b8d9a6f5c3e1b8d9a6f5c3e1b8d9a6f5c3e1b8d9a" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--accent3);border:1px solid rgba(57,255,20,0.3);padding:2px 6px;border-radius:3px;text-decoration:none;background:rgba(57,255,20,0.06)">🔗 VIEW ON STARKSCAN ↗</a>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);margin-bottom:4px;word-break:break-all">0x04a7c3f1...9d8e · Relief Fund v2.1 · Sepolia</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:8px">Latest tx: <a href="https://sepolia.starkscan.co/tx/0x06b2c4a8f1e3d9b7c5a2f8e4d1b9c6a3f7e2d8b5c1a4f9e6d3b8c2a5f1e9d4b" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">0x06b2...d4b ↗</a> · disbursement · 2 hrs ago</div>
+          <div class="funds-stat-label">TOTAL VERIFIED FUNDS</div>
+          <div class="funds-stat-val">₹2.4Cr</div>
+          <div class="funds-stat-sub">≈ $288,000 USD · STRK collateral</div>
+        </div>
+        <div class="funds-stat">
+          <div class="funds-stat-label">DISBURSEMENT STATUS</div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <div style="flex:1;text-align:center"><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--accent3)" id="disbursedAmt">₹1.1Cr</div><div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">DISBURSED</div></div>
+            <div style="flex:1;text-align:center"><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--warn)">₹0.9Cr</div><div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">PENDING</div></div>
+            <div style="flex:1;text-align:center"><div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--text2)">₹0.4Cr</div><div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">QUEUED</div></div>
+          </div>
+        </div>
+        <div class="panel-head" style="border:0;padding:4px 0 8px;margin-top:4px">
+          <div class="panel-title">⚰ DECEASED COMPENSATION</div>
+          <span class="badge badge-red" id="compensationBadge">0 PENDING</span>
+        </div>
+        <div id="compensationList" style="margin-bottom:10px">
+          <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);text-align:center">No deceased compensation cases yet. Cases auto-create when a person is marked deceased.</div>
+        </div>
+        <div class="panel-head" style="border:0;padding:4px 0 8px">
+          <div class="panel-title">VERIFIED NGO RECIPIENTS</div>
+          <button onclick="connectStarknetWallet()" style="font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 10px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.35);color:var(--accent3);border-radius:3px;cursor:pointer" title="Connect ArgentX or Braavos wallet to submit real on-chain disbursements">🔗 CONNECT WALLET</button>
+        </div>
+        <div id="starknetStatsBanner" style="display:none;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);padding:6px 10px;background:rgba(57,255,20,0.05);border:1px solid rgba(57,255,20,0.2);border-radius:4px;margin-bottom:8px"></div>
+        <div class="ngo-list" id="ngoList"></div>
+        <div class="panel-head" style="border:0;padding:12px 0 6px;margin-top:8px">
+          <div class="panel-title">NGO COORDINATION BOARD</div>
+          <button class="drone-btn dispatch" onclick="deconflictNGOs()" style="font-size:8px;padding:3px 8px">⚡ DECONFLICT</button>
+        </div>
+        <div id="ngoBoardList"></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div class="tab-content" id="tab-analytics">
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;max-height:100%">
+
+        <!-- KPI strip -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">
+            <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--accent3)" id="an-survival-rate">—</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:3px">SURVIVAL RATE</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">
+            <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--accent)" id="an-avg-response">—</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:3px">AVG RESPONSE</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">
+            <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--warn)" id="an-rescued-hr">—</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:3px">RESCUED / HR</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">
+            <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--red)" id="an-critical-ratio">—</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:3px">CRITICAL RATIO</div>
+          </div>
+        </div>
+
+        <!-- Sparkline: rescued per hour -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:10px">📈 RESCUES PER HOUR — LAST 12 HOURS</div>
+          <canvas id="an-sparkline" height="70" style="width:100%;display:block"></canvas>
+        </div>
+
+        <!-- Zone breakdown bar chart -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:10px">🗺 RESCUE OUTCOMES BY ZONE</div>
+          <canvas id="an-zone-chart" height="90" style="width:100%;display:block"></canvas>
+        </div>
+
+        <!-- Condition doughnut + timeline -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:10px">🩺 CONDITION BREAKDOWN</div>
+            <canvas id="an-condition-chart" height="130" style="width:100%;display:block"></canvas>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:10px">📡 OPERATION TIMELINE</div>
+            <div id="an-timeline" style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <!-- Live dam levels panel -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px">💧 DAM LEVELS — INDIA CWC / NATIONAL</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="an-dam-status" style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">SIMULATED</span>
+              <button onclick="fetchLiveDamData()" style="padding:3px 8px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:3px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:8px;cursor:pointer">↻ REFRESH</button>
+            </div>
+          </div>
+          <div id="an-dam-levels" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+        </div>
+
+      </div>
+    </div>
+
+<div class="footer">
+  <div class="footer-label">STACK:</div>
+  <span class="tech-tag active">IMPULSE AI</span>
+  <span class="tech-tag purple">ZAMA FHE</span>
+  <span class="tech-tag active">IPFS + FILECOIN</span>
+  <span class="tech-tag active">STORACHA</span>
+  <span class="tech-tag active">NEAR PROTOCOL</span>
+  <span class="tech-tag pending" title="Sepolia testnet integration roadmapped — display-only in this build">WORLD ID ⚠</span>
+  <span class="tech-tag pending" title="Starknet Sepolia testnet integration roadmapped — display-only in this build">STARKNET ⚠</span>
+  <span class="tech-tag success">HYPERCERTS</span>
+  <span class="tech-tag purple">LIT PROTOCOL</span>
+  <span class="tech-tag active">ETH FOUNDATION</span>
+  <div class="footer-right" id="footerRight">BROADCASTCHANNEL MESH · OFFLINE-FIRST</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""
+  onerror="document.head.insertAdjacentHTML('beforeend','<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css>');var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.crossOrigin='';document.head.appendChild(s)"></script>
+<script src="js/app.js"></script>
+
+<!-- JUDGE ONBOARDING OVERLAY -->
+<div id="judgeOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center">
+  <div style="max-width:520px;width:90%;background:var(--surface);border:1px solid rgba(0,212,255,0.35);border-radius:10px;padding:28px;box-shadow:0 0 60px rgba(0,212,255,0.15)">
+    <div style="font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:2px;margin-bottom:4px">DISASTERNET · JUDGE WALKTHROUGH</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:20px;letter-spacing:1px">6-step demo path · ~4 minutes for full evaluation</div>
+
+    <div id="judgeSteps" style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">
+      <!-- Steps injected by JS -->
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="judgeNextBtn" onclick="judgeNext()" style="flex:1;padding:10px 0;background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.4);border-radius:5px;color:var(--accent);font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:background 0.2s">START WALKTHROUGH →</button>
+      <button onclick="closeJudgeOverlay()" style="padding:10px 14px;background:none;border:1px solid var(--border);border-radius:5px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer">SKIP</button>
+    </div>
+    <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);text-align:center">Press ESC to dismiss · This overlay only appears on first load</div>
+  </div>
+</div>
+
+<script>
+const JUDGE_STEPS = [
+  { step:1, icon:'🛰️', title:'ENTER AS MAIN STATION', desc:'Click <strong style="color:var(--accent)">Main Station Demo</strong> on the login screen. This gives you full command access — drones, AI, zones, funds.', action: null },
+  { step:2, icon:'🤖', title:'WATCH THE AI THINK', desc:'In the centre panel, type <em>"Zone OD1 cyclone casualties arriving, oxygen critical"</em> and press SUBMIT. With an API key loaded, watch tokens stream in real-time.', action: null },
+  { step:3, icon:'🗺️', title:'DRAW AN OFFLINE ROUTE', desc:'In the Map tab, set FROM = <strong>MH1</strong> (Mumbai) and TO = <strong>OD1</strong> (Puri), then hit CALCULATE ROUTE. The A* algorithm finds the safest inter-state path and draws it on the live map.', action: null },
+  { step:4, icon:'🚁', title:'DISPATCH A DRONE', desc:'Switch to the Drones tab. Tap <strong>⚡ DISPATCH</strong> on any standby drone. Watch it appear on the map and update the battery countdown in real time.', action: null },
+  { step:5, icon:'🆘', title:'EXPERIENCE THE VICTIM FLOW', desc:'Open in a new tab, select <strong style="color:var(--red)">VICTIM</strong>, fill the SOS form. The countdown and rescue status steps update live — this is what a flood victim sees.', action: null },
+  { step:6, icon:'🔬', title:'LIVE vs. SIMULATED', desc:'<strong style="color:var(--accent3)">LIVE:</strong> Anthropic AI streaming · IPFS/Storacha pinning · Zama TFHE WASM · Service Worker offline tiles · Family Search OTP · Starknet Sepolia RPC + wallet writes · PWA install prompt · World ID IDKit (device verification) · Partykit WebSocket cross-device mesh (+ BroadcastChannel fallback) · Vercel KV sync backend. <strong style="color:var(--warn)">SIMULATED:</strong> Drone telemetry, dam CWC live feed (CWC API offline).', action: null },
+];
+
+let judgeStepIdx = 0;
+let judgeStarted = false;
+
+function renderJudgeSteps() {
+  const el = document.getElementById('judgeSteps');
+  if (!el) return;
+  el.innerHTML = JUDGE_STEPS.map((s, i) => {
+    const active = i === judgeStepIdx && judgeStarted;
+    const done = judgeStarted && i < judgeStepIdx;
+    return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:5px;border:1px solid ${active?'rgba(0,212,255,0.4)':done?'rgba(57,255,20,0.2)':'var(--border)'};background:${active?'rgba(0,212,255,0.06)':done?'rgba(57,255,20,0.04)':'transparent'};transition:all 0.3s">
+      <div style="width:28px;height:28px;border-radius:50%;border:1px solid ${active?'var(--accent)':done?'var(--accent3)':'var(--border2)'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${done?'✓':s.icon}</div>
+      <div style="flex:1">
+        <div style="font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;color:${active?'var(--accent)':done?'var(--accent3)':'var(--text3)'};letter-spacing:1px;margin-bottom:3px">STEP ${s.step}: ${s.title}</div>
+        <div style="font-size:11px;color:${active?'var(--text)':done?'var(--text3)':'var(--text3)'};line-height:1.5">${s.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function judgeNext() {
+  if (!judgeStarted) {
+    judgeStarted = true;
+    judgeStepIdx = 0;
+    document.getElementById('judgeNextBtn').textContent = 'NEXT STEP →';
+    renderJudgeSteps();
+    return;
+  }
+  judgeStepIdx++;
+  if (judgeStepIdx >= JUDGE_STEPS.length) {
+    closeJudgeOverlay();
+    return;
+  }
+  if (judgeStepIdx === JUDGE_STEPS.length - 1) {
+    document.getElementById('judgeNextBtn').textContent = 'DONE ✓';
+  }
+  renderJudgeSteps();
+}
+
+function closeJudgeOverlay() {
+  const el = document.getElementById('judgeOverlay');
+  if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }
+  try { sessionStorage.setItem('dnet_judge_seen', '1'); } catch(e) {}
+}
+
+// Show overlay after role modal is dismissed (watches for roleModal to leave .show class)
+window.addEventListener('load', () => {
+  renderJudgeSteps();
+  // Show 800ms after the login modal closes
+  const poll = setInterval(() => {
+    const modal = document.getElementById('roleModal');
+    if (modal && !modal.classList.contains('show')) {
+      clearInterval(poll);
+      try { if (sessionStorage.getItem('dnet_judge_seen')) return; } catch(e) {}
+      setTimeout(() => {
+        const ov = document.getElementById('judgeOverlay');
+        if (ov) ov.style.display = 'flex';
+      }, 800);
+    }
+  }, 200);
+});
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeJudgeOverlay(); });
+</script>
+</body>
+</html>
