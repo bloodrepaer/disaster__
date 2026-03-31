@@ -2,7 +2,7 @@
 
 > **Live demo:** https://disaster-sand-psi.vercel.app  
 > **Theme:** Frontiers of Collaboration — cross-disciplinary, community-driven, joint decision-making  
-> **Demo video:** https://drive.google.com/file/d/1yjT8GBiu8mNw1kUSbUo2c4aPiOEN-awt/view?usp=sharing
+> **Demo video:** (https://acesse.one/0xbi464)
 
 DisasterNet is a browser-based, multi-role coordination platform designed for India's national disaster response infrastructure (NDRF, ODRAF, state agencies). It connects four distinct operational roles — Victim, Rescue Worker, Hospital, and Command Station — through a shared real-time data mesh, live AI triage, decentralised storage, and on-chain fund disbursement.
 
@@ -261,7 +261,7 @@ The project grew from a shared interest in how technology can meaningfully suppo
 
 ## Demo Video
 
-A walkthrough of the full interface is available here: *(link to be added)*
+A walkthrough of the full interface is available here: (https://acesse.one/0xbi464)
 
 The demo covers:
 1. **Victim** — SOS beacon activation and rescue ETA
